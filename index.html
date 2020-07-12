@@ -42,31 +42,32 @@
 <body>
 <div id="app">
   <b-card class="app-card vh-100" no-body>
+    <b-dropdown right text="Actions" variant="outline-primary" style="position: absolute; bottom: 10px; left: 10px; z-index: 1;">
+      <b-dropdown-item variant="success" @click.prevent="createOverlay">Create Overlay</b-dropdown-item>
+      <b-dropdown-item variant="info" @click.prevent="renameOverlay">Rename Overlay</b-dropdown-item>
+      <b-dropdown-divider></b-dropdown-divider>
+      <b-dropdown-item variant="danger" @click.prevent="deleteOverlay">Delete Overlay</b-dropdown-item>
+    </b-dropdown>
     <b-tabs class="app-tabs mh-100 h-100" content-class="h-100" pills card vertical lazy>
-      <b-tab v-for="(tab, idx) in overlays" :key="'dyn-tab-' + idx" :title="tab" class="h-100" lazy>
+      <b-tab v-for="(tab, idx) in overlays" :key="'dyn-tab-' + idx" :title="tab" class="h-100" @click="selectOverlay(tab)" lazy>
         <editor-view :overlay="tab"></editor-view>
       </b-tab>
-
-      <!-- New Tab Button (Using tabs-end slot) -->
-      <template v-slot:tabs-end>
-        <b-nav-item role="presentation" @click.prevent="createOverlay" href="#"><b>+</b></b-nav-item>
-      </template>
 
       <!-- Render this if no tabs -->
       <template v-slot:empty>
         <div class="text-center text-muted">
           There are no overlays<br>
-          Create a new overlay using the <b>+</b> button above.
+          Create a new overlay using the Actions button above.
         </div>
       </template>
     </b-tabs>
   </b-card>
   <b-modal
-    id="create-overlay-modal"
-    ref="create-overlay-modal"
-    title="New Overlay Name"
-    @show="resetCreateOverlayModal"
-    @ok="handleOverlayCreateOk"
+    id="edit-overlay-modal"
+    ref="edit-overlay-modal"
+    :title="overlayModalTitle"
+    @show="resetEditorOverlayModal"
+    @ok="handleOverlayEditOk"
   >
     <form ref="form">
       <b-form-group
@@ -84,6 +85,14 @@
         ></b-form-input>
       </b-form-group>
     </form>
+  </b-modal>
+  <b-modal
+    id="delete-overlay-modal"
+    ref="delete-overlay-modal"
+    title="Confirm"
+    @ok="handleOverlayDeletionOk"
+  >
+    Are you sure to delete overlay <code>{{ overlay }}</code> ?
   </b-modal>
 </div>
 </div>
@@ -328,20 +337,46 @@
     var app = new Vue({
         el: '#app',
         data: {
+            isCreateOverlay: false,
+            overlayModalTitle: '',
+            overlay: '',
             newOverlayName: '',
             newOverlayNameState: null,
             overlays: []
         },
         methods: {
+            selectOverlay(overlay) {
+                this.overlay = overlay
+            },
             createOverlay() {
-                this.$bvModal.show('create-overlay-modal')
+                this.isCreateOverlay = true
+                this.overlayModalTitle = 'New Overlay'
+                this.$bvModal.show('edit-overlay-modal')
             },
             doCreateOverlay() {
                 return axios.post(`/create_overlay?overlay=${this.newOverlayName}`).then(response => {
                     this.loadOverlays()
                 })
             },
-            handleOverlayCreateOk(bvModalEvt) {
+            deleteOverlay() {
+                this.$bvModal.show('delete-overlay-modal')
+            },
+            doDeleteOverlay() {
+                return axios.post(`/delete_overlay?overlay=${this.overlay}`).then(response => {
+                    this.loadOverlays()
+                })
+            },
+            renameOverlay() {
+                this.isCreateOverlay = false
+                this.overlayModalTitle = 'Rename Overlay'
+                this.$bvModal.show('edit-overlay-modal')
+            },
+            doRenameOverlay() {
+                return axios.post(`/rename_overlay?overlay=${this.overlay}&name=${this.newOverlayName}`).then(response => {
+                    this.loadOverlays()
+                })
+            },
+            handleOverlayEditOk(bvModalEvt) {
                 // Prevent modal from closing
                 bvModalEvt.preventDefault()
                 this.handleOverlaySubmit()
@@ -353,12 +388,33 @@
                     return
                 }
 
-                this.doCreateOverlay().then(() => {
-                    this.$bvModal.hide('create-overlay-modal')
+                if (this.isCreateOverlay) {
+                    this.doCreateOverlay().then(() => {
+                        this.$bvModal.hide('edit-overlay-modal')
+                    })
+                } else {
+                    this.doRenameOverlay().then(() => {
+                        this.$bvModal.hide('edit-overlay-modal')
+                    })
+                }
+            },
+            handleOverlayDeletionOk(bvModalEvt) {
+                // Prevent modal from closing
+                bvModalEvt.preventDefault()
+                this.handleDeleteOverlaySubmit()
+            },
+            handleDeleteOverlaySubmit() {
+                this.doDeleteOverlay().then(() => {
+                    this.$bvModal.hide('delete-overlay-modal')
                 })
             },
-            resetCreateOverlayModal() {
-                this.newOverlayName = ''
+            resetEditorOverlayModal() {
+                if (this.isCreateOverlay) {
+                    this.newOverlayName = ''
+                } else {
+                    let len = this.overlay.length
+                    this.newOverlayName = this.overlay.slice(0, len - 1)
+                }
                 this.newOverlayNameState = null
             },
             checkFormValidity() {
@@ -379,6 +435,9 @@
             loadOverlays() {
                 axios.get('/files').then(response => {
                     this.overlays = response.data.files
+                    if (this.overlays.length > 0) {
+                        this.overlay = this.overlays[0]
+                    }
                 })
             }
         },

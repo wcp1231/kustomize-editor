@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 var workDir string
@@ -175,6 +176,88 @@ func createOverlay(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func renameOverlay(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != "POST" {
+		http.Error(w, "Url Param 'path' is missing", http.StatusMethodNotAllowed)
+		return
+	}
+
+	overlay, ok := r.URL.Query()["overlay"]
+	if !ok {
+		http.Error(w, "Url Param 'overlay' is missing", http.StatusBadRequest)
+		return
+	}
+
+	newName, ok := r.URL.Query()["name"]
+	if !ok {
+		http.Error(w, "Url Param 'name' is missing", http.StatusBadRequest)
+		return
+	}
+
+	overlayPath := fmt.Sprintf("%s/%s", workDir, overlay[0])
+	newPath := fmt.Sprintf("%s/%s", workDir, newName[0])
+
+	err := os.Rename(overlayPath, newPath)
+	if err != nil {
+		log.Printf("Move overlay err %v\n", err)
+		http.Error(w, "Move overlay err", 400)
+		return
+	}
+
+	log.Printf("Move overlay %s to %s\n", overlayPath, newPath)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func deleteOverlay(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != "POST" {
+		http.Error(w, "Url Param 'path' is missing", http.StatusMethodNotAllowed)
+		return
+	}
+
+	overlay, ok := r.URL.Query()["overlay"]
+	if !ok {
+		http.Error(w, "Url Param 'overlay' is missing", http.StatusBadRequest)
+		return
+	}
+
+
+	overlayPath := fmt.Sprintf("%s/%s", workDir, overlay[0])
+
+	err := removeContents(overlayPath)
+	if err != nil {
+		log.Printf("Delete overlay err %v\n", err)
+		http.Error(w, "Delete overlay err", 400)
+		return
+	}
+
+	log.Printf("Delete overlay %s\n", overlayPath)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func removeContents(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+	}
+
+	return os.Remove(dir)
+}
+
 func main() {
 	port := flag.String("p", "8100", "port to serve on")
 	flag.StringVar(&workDir, "d", ".", "kustomize dir")
@@ -195,6 +278,8 @@ func main() {
 	http.HandleFunc("/create", createFile)
 	http.HandleFunc("/delete", deleteFile)
 	http.HandleFunc("/create_overlay", createOverlay)
+	http.HandleFunc("/rename_overlay", renameOverlay)
+	http.HandleFunc("/delete_overlay", deleteOverlay)
 	http.Handle("/files/", JsonFileServer(http.Dir(workDir), "/files"))
 
 	http.ListenAndServe(":"+*port, nil)
