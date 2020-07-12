@@ -1,0 +1,382 @@
+<html>
+<head>
+  <title>Kustomize Editor</title>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/lib/codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/keymap/vim.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/mode/yaml/yaml.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/mode/javascript/javascript.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-codemirror@4.0.6/dist/vue-codemirror.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.15.0/dist/bootstrap-vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@0.19.2/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/lib/codemirror.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.15.0/dist/bootstrap-vue.min.css">
+  <style>
+    .editor-card .card-body {
+      padding: 0;
+    }
+    .preview-card .card-body {
+      padding: 0;
+    }
+    .card-header-btn {
+      top: 8px;
+      right: 8px;
+    }
+    .delete-file-btn {
+      right: 1.25em;
+      padding: 0 5px;
+    }
+
+  </style>
+</head>
+<body>
+<div id="app">
+  <b-card class="app-card vh-100" no-body>
+    <b-tabs class="app-tabs mh-100 h-100" content-class="h-100" pills card vertical lazy>
+      <b-tab v-for="(tab, idx) in overlays" :key="'dyn-tab-' + idx" :title="tab" class="h-100" lazy>
+        <editor-view :overlay="tab"></editor-view>
+      </b-tab>
+
+      <!-- New Tab Button (Using tabs-end slot) -->
+      <template v-slot:tabs-end>
+        <b-nav-item role="presentation" @click.prevent="createOverlay" href="#"><b>+</b></b-nav-item>
+      </template>
+
+      <!-- Render this if no tabs -->
+      <template v-slot:empty>
+        <div class="text-center text-muted">
+          There are no overlays<br>
+          Create a new overlay using the <b>+</b> button above.
+        </div>
+      </template>
+    </b-tabs>
+  </b-card>
+  <b-modal
+    id="create-overlay-modal"
+    ref="create-overlay-modal"
+    title="New Overlay Name"
+    @show="resetCreateOverlayModal"
+    @ok="handleOverlayCreateOk"
+  >
+    <form ref="form">
+      <b-form-group
+        :state="newOverlayNameState"
+        label="Overlay name"
+        label-for="new-overlay-input"
+        invalid-feedback="Overlay name is missing or invalid"
+      >
+        <b-form-input
+          id="new-overlay-input"
+          v-model="newOverlayName"
+          :state="newOverlayNameState"
+          required
+        ></b-form-input>
+      </b-form-group>
+    </form>
+  </b-modal>
+</div>
+</div>
+<script type="text/x-template" id="editor-view">
+  <b-container fluid>
+    <b-row class="editor-row mh-100 h-100">
+      <b-col col cols="2">
+        <b-card no-body>
+          <template v-slot:header>
+            Files
+            <b-button size="sm" variant="success" class="position-absolute card-header-btn" @click="createFile">Create</b-button>
+          </template>
+          <b-list-group flush>
+            <b-list-group-item v-for="(file, idx) in files"
+                               v-bind:key="idx"
+                               :active="file == selectedFile"
+                               @click="selectFile(file)"
+                               href="#">
+              {{ file }}
+              <b-button variant="outline-danger" class="position-absolute delete-file-btn" size="sm" @click.stop="deleteFile(file)">X</b-button>
+            </b-list-group-item>
+          </b-list-group>
+        </b-card>
+      </b-col>
+      <b-col col cols="5" class="h-100">
+        <b-card no-body header-tag="header" class="editor-card h-100">
+          <template v-slot:header>
+            Editor
+            <b-button size="sm" variant="success" class="position-absolute card-header-btn" v-if="contentChange" @click="saveFile">Save</b-button>
+          </template>
+          <b-card-body ref="editor-card-body" class="h-100">
+            <codemirror ref="kustomize-editor" :value="fileContent" :options="editorOption" @ready="onEditorReady" @input="onCodeChange" v-show="fileContent !== null"></codemirror>
+          </b-card-body>
+        </b-card>
+      </b-col>
+      <b-col col cols="5" class="h-100">
+        <b-card no-body header-tag="header" class="preview-card h-100">
+          <template v-slot:header>
+            Preview
+            <b-button size="sm" variant="info" class="position-absolute card-header-btn" @click="preview">Preview</b-button>
+          </template>
+          <b-card-body ref="preview-card-body" class="h-100">
+            <codemirror ref="kustomize-preview" :value="previewContent" :options="previewOption" @ready="onPreviewReady" v-show="previewContent != ''"></codemirror>
+          </b-card-body>
+        </b-card>
+      </b-col>
+    </b-row>
+    <b-modal
+      id="create-file-modal"
+      ref="create-file-modal"
+      title="New File Name"
+      @show="resetCreateFileModal"
+      @ok="handleCreateOk"
+    >
+      <form ref="form">
+        <b-form-group
+          :state="newFileNameState"
+          label="File name"
+          label-for="new-filename-input"
+          invalid-feedback="File name is missing or invalid"
+        >
+          <b-form-input
+            id="new-filename-input"
+            v-model="newFileName"
+            :state="newFileNameState"
+            required
+          ></b-form-input>
+        </b-form-group>
+      </form>
+    </b-modal>
+    <b-modal
+      id="delete-file-modal"
+      ref="delete-file-modal"
+      title="Confirm"
+      @ok="handleDeletionOk"
+    >
+      Are you sure to delete file <code>{{ deletedFile }}</code> ?
+    </b-modal>
+  </b-container>
+</script>
+<script>
+    Vue.use(VueCodemirror)
+    Vue.component('editor-view', {
+        template: '#editor-view',
+        props: ['overlay'],
+        data() {
+            return {
+                editorOption: {
+                    mode: 'text/x-yaml',
+                    lineNumbers: true,
+                    //keyMap: 'vim',
+                },
+                previewOption: {
+                    mode: 'text/x-yaml',
+                    lineNumbers: true,
+                    readOnly: true,
+                },
+                files: [],
+                selectedFile: '',
+                fileContent: null,
+                changedContent: '',
+                contentChange: false,
+                previewContent: '',
+                editorCM: null,
+                previewCM: null,
+                newFileName: '',
+                newFileNameState: null,
+                deletedFile: '',
+            }
+        },
+        methods: {
+            selectFile(file) {
+                this.selectedFile = file
+                axios.get(`/files/${this.overlay}/${file}`).then(response => {
+                    this.fileContent = response.data.content
+                    this.changedContent = this.fileContent
+
+                    this.contentChange = false
+                })
+            },
+            createFile() {
+                this.$bvModal.show('create-file-modal')
+            },
+            doCreateFile() {
+                return axios.post(`/create?path=${this.overlay}${this.newFileName}`).then(response => {
+                    this.listFiles()
+                })
+            },
+            deleteFile(file) {
+                this.deletedFile = file
+                this.$bvModal.show('delete-file-modal')
+            },
+            doDeleteFile() {
+                return axios.post(`/delete?path=${this.overlay}${this.deletedFile}`).then(response => {
+                    this.listFiles()
+                })
+            },
+            saveFile() {
+                var config = {
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    }
+                };
+                axios.post(`/save?path=${this.overlay}${this.selectedFile}`, this.changedContent, config).then(response => {
+                    this.fileContent = this.changedContent
+                    this.contentChange = false
+                    this.preview()
+                })
+            },
+            preview() {
+                axios.get(`/preview?overlay=${this.overlay}`).then(response => {
+                    this.previewContent = response.data
+                })
+            },
+            listFiles() {
+                axios.get(`/files/${this.overlay}`).then(response => {
+                    this.files = response.data.files
+                })
+            },
+            resetCreateFileModal() {
+                this.newFileName = ''
+                this.newFileNameState = null
+            },
+            handleCreateOk(bvModalEvt) {
+                // Prevent modal from closing
+                bvModalEvt.preventDefault()
+                this.handleCreateFileSubmit()
+            },
+            handleDeletionOk(bvModalEvt) {
+                // Prevent modal from closing
+                bvModalEvt.preventDefault()
+                this.handleDeleteFileSubmit()
+            },
+            handleDeleteFileSubmit() {
+                this.doDeleteFile().then(() => {
+                    this.$bvModal.hide('delete-file-modal')
+                })
+            },
+            checkFormValidity() {
+                let valid = this.$refs.form.checkValidity()
+                this.newFileNameState = valid
+                if (!valid) {
+                    return valid
+                }
+
+                let matched = this.newFileName.match(/^[-_a-zA-Z0-9]+\.(yaml|yml|json)$/)
+                if (!matched) {
+                    this.newFileNameState = false
+                    return false
+                }
+
+                return true
+            },
+            handleCreateFileSubmit() {
+                // Exit when the form isn't valid
+                if (!this.checkFormValidity()) {
+                    return
+                }
+
+                this.doCreateFile().then(() => {
+                    this.$bvModal.hide('create-file-modal')
+                })
+            },
+            onEditorReady(cm) {
+                this.editorCM = cm
+                this.editorCM.setOption("extraKeys", {
+                    Tab(cm) {
+                        cm.replaceSelection("  " , "end");
+                    }
+                })
+            },
+            onCodeChange(newCode) {
+                this.changedContent = newCode
+                this.contentChange = this.changedContent !== this.fileContent
+
+            },
+            onPreviewReady(cm) {
+                this.previewCM = cm
+            },
+            handleWindowResize() {
+                this.updateEditorSize()
+            },
+            updateEditorSize() {
+                let width = this.$refs['editor-card-body'].clientWidth
+                let height = this.$refs['editor-card-body'].clientHeight
+                this.editorCM.setSize(width-2, height)
+                this.previewCM.setSize(width-2, height)
+            },
+        },
+        watch: {
+        },
+        mounted() {
+            this.updateEditorSize()
+            window.addEventListener('resize', this.handleWindowResize);
+            this.listFiles()
+        },
+        beforeDestroy: function () {
+            window.removeEventListener('resize', this. handleWindowResize)
+        },
+    })
+    var app = new Vue({
+        el: '#app',
+        data: {
+            newOverlayName: '',
+            newOverlayNameState: null,
+            overlays: []
+        },
+        methods: {
+            createOverlay() {
+                this.$bvModal.show('create-overlay-modal')
+            },
+            doCreateOverlay() {
+                return axios.post(`/create_overlay?overlay=${this.newOverlayName}`).then(response => {
+                    this.loadOverlays()
+                })
+            },
+            handleOverlayCreateOk(bvModalEvt) {
+                // Prevent modal from closing
+                bvModalEvt.preventDefault()
+                this.handleOverlaySubmit()
+
+            },
+            handleOverlaySubmit() {
+                // Exit when the form isn't valid
+                if (!this.checkFormValidity()) {
+                    return
+                }
+
+                this.doCreateOverlay().then(() => {
+                    this.$bvModal.hide('create-overlay-modal')
+                })
+            },
+            resetCreateOverlayModal() {
+                this.newOverlayName = ''
+                this.newOverlayNameState = null
+            },
+            checkFormValidity() {
+                let valid = this.$refs.form.checkValidity()
+                this.newOverlayNameState = valid
+                if (!valid) {
+                    return valid
+                }
+
+                let matched = this.newOverlayName.match(/^[-_a-zA-Z0-9]+$/)
+                if (!matched) {
+                    this.newOverlayNameState = false
+                    return false
+                }
+
+                return true
+            },
+            loadOverlays() {
+                axios.get('/files').then(response => {
+                    this.overlays = response.data.files
+                })
+            }
+        },
+        mounted() {
+            this.loadOverlays()
+        }
+    })
+</script>
+</body>
+</html>
