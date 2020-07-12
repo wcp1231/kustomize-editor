@@ -72,6 +72,7 @@
           id="new-overlay-input"
           v-model="newOverlayName"
           :state="newOverlayNameState"
+          autofocus
           required
         ></b-form-input>
       </b-form-group>
@@ -141,6 +142,7 @@
             id="new-filename-input"
             v-model="newFileName"
             :state="newFileNameState"
+            autofocus
             required
           ></b-form-input>
         </b-form-group>
