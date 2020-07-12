@@ -21,6 +21,13 @@
     .preview-card .card-body {
       padding: 0;
     }
+    .editor-col {
+      padding-left: 7.5px;
+      padding-right: 7.5px;
+    }
+    .files-list-group {
+      overflow: scroll;
+    }
     .card-header-btn {
       top: 8px;
       right: 8px;
@@ -83,13 +90,13 @@
 <script type="text/x-template" id="editor-view">
   <b-container fluid>
     <b-row class="editor-row mh-100 h-100">
-      <b-col col cols="2">
-        <b-card no-body>
+      <b-col col cols="2" class="editor-col h-100">
+        <b-card no-body class="h-100">
           <template v-slot:header>
             Files
             <b-button size="sm" variant="success" class="position-absolute card-header-btn" @click="createFile">Create</b-button>
           </template>
-          <b-list-group flush>
+          <b-list-group flush class="files-list-group h-100">
             <b-list-group-item v-for="(file, idx) in files"
                                v-bind:key="idx"
                                :active="file == selectedFile"
@@ -101,7 +108,7 @@
           </b-list-group>
         </b-card>
       </b-col>
-      <b-col col cols="5" class="h-100">
+      <b-col col cols="5" class="editor-col h-100">
         <b-card no-body header-tag="header" class="editor-card h-100">
           <template v-slot:header>
             Editor
@@ -112,7 +119,7 @@
           </b-card-body>
         </b-card>
       </b-col>
-      <b-col col cols="5" class="h-100">
+      <b-col col cols="5" class="editor-col h-100">
         <b-card no-body header-tag="header" class="preview-card h-100">
           <template v-slot:header>
             Preview
