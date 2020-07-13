@@ -288,5 +288,9 @@ func main() {
 	http.HandleFunc("/delete_overlay", deleteOverlay)
 	http.Handle("/files/", JsonFileServer(http.Dir(workDir), "/files"))
 
-	http.ListenAndServe(":"+*port, nil)
+	log.Printf("Serving Kustomize Editor on 0.0.0.0:%s ...", *port)
+	err := http.ListenAndServe(":"+*port, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
