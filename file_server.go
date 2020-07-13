@@ -26,6 +26,7 @@ type fileContentResponse struct {
 }
 
 type dirContentResponse struct {
+	Dir string `json:"dir"`
 	Files []string `json:"files"`
 }
 
@@ -91,7 +92,8 @@ func serverDirContent(w http.ResponseWriter, r *http.Request, f http.File) {
 		files = append(files, name)
 	}
 
-	resp := dirContentResponse { files }
+	curDir := f.(*os.File)
+	resp := dirContentResponse { curDir.Name(), files }
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resp)
 }

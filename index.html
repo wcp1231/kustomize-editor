@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.15.0/dist/bootstrap-vue.min.css">
   <style>
+    .app-card {
+      padding-top: 56px;
+    }
     .editor-card .card-body {
       padding: 0;
     }
@@ -37,31 +40,42 @@
       padding: 0 5px;
     }
 
-  </style>
+    </style>
 </head>
 <body>
 <div id="app">
-  <b-card class="app-card vh-100" no-body>
-    <b-dropdown right text="Actions" variant="outline-primary" style="position: absolute; bottom: 10px; left: 10px; z-index: 1;">
-      <b-dropdown-item variant="success" @click.prevent="createOverlay">Create Overlay</b-dropdown-item>
-      <b-dropdown-item variant="info" @click.prevent="renameOverlay">Rename Overlay</b-dropdown-item>
-      <b-dropdown-divider></b-dropdown-divider>
-      <b-dropdown-item variant="danger" @click.prevent="deleteOverlay">Delete Overlay</b-dropdown-item>
-    </b-dropdown>
-    <b-tabs class="app-tabs mh-100 h-100" content-class="h-100" pills card vertical lazy>
-      <b-tab v-for="(tab, idx) in overlays" :key="'dyn-tab-' + idx" :title="tab" class="h-100" @click="selectOverlay(tab)" lazy>
-        <editor-view :overlay="tab"></editor-view>
-      </b-tab>
+    <b-navbar type="light" fixed="top">
+      <b-navbar-brand>Kustomize Editor</b-navbar-brand>
 
-      <!-- Render this if no tabs -->
-      <template v-slot:empty>
-        <div class="text-center text-muted">
-          There are no overlays<br>
-          Create a new overlay using the Actions button above.
-        </div>
-      </template>
-    </b-tabs>
-  </b-card>
+      <b-collapse id="nav-text-collapse" is-nav>
+        <b-navbar-nav>
+          <b-nav-text>Path: {{curDir}}</b-nav-text>
+        </b-navbar-nav>
+      </b-collapse>
+    </b-navbar>
+    <div class="app-card vh-100">
+      <b-card class="h-100" no-body>
+        <b-dropdown right text="Actions" variant="outline-primary" style="position: absolute; bottom: 10px; left: 10px; z-index: 1;">
+          <b-dropdown-item variant="success" @click.prevent="createOverlay">Create Overlay</b-dropdown-item>
+          <b-dropdown-item variant="info" @click.prevent="renameOverlay">Rename Overlay</b-dropdown-item>
+          <b-dropdown-divider></b-dropdown-divider>
+          <b-dropdown-item variant="danger" @click.prevent="deleteOverlay">Delete Overlay</b-dropdown-item>
+        </b-dropdown>
+        <b-tabs class="app-tabs mh-100 h-100" content-class="h-100" pills card vertical lazy>
+          <b-tab v-for="(tab, idx) in overlays" :key="'dyn-tab-' + idx" :title="tab" class="h-100" @click="selectOverlay(tab)" lazy>
+            <editor-view :overlay="tab"></editor-view>
+          </b-tab>
+
+          <!-- Render this if no tabs -->
+          <template v-slot:empty>
+            <div class="text-center text-muted">
+              There are no overlays<br>
+              Create a new overlay using the Actions button above.
+            </div>
+          </template>
+        </b-tabs>
+      </b-card>
+    </div>
   <b-modal
     id="edit-overlay-modal"
     ref="edit-overlay-modal"
@@ -300,7 +314,7 @@
                 this.editorCM = cm;
                 this.editorCM.setOption("extraKeys", {
                     Tab(cm) {
-                        cm.replaceSelection("  " , "end");
+                        cm.replaceSelection("  ", "end");
                     }
                 });
             },
@@ -318,8 +332,8 @@
             updateEditorSize() {
                 let width = this.$refs['editor-card-body'].clientWidth;
                 let height = this.$refs['editor-card-body'].clientHeight;
-                this.editorCM.setSize(width-2, height);
-                this.previewCM.setSize(width-2, height);
+                this.editorCM.setSize(width - 2, height);
+                this.previewCM.setSize(width - 2, height);
             },
         },
         mounted() {
@@ -328,7 +342,7 @@
             this.listFiles();
         },
         beforeDestroy: function () {
-            window.removeEventListener('resize', this. handleWindowResize);
+            window.removeEventListener('resize', this.handleWindowResize);
         },
     })
     var app = new Vue({
@@ -339,6 +353,7 @@
             overlay: '',
             newOverlayName: '',
             newOverlayNameState: null,
+            curDir: '',
             overlays: []
         },
         methods: {
@@ -431,6 +446,7 @@
             },
             loadOverlays() {
                 axios.get('/files').then(response => {
+                    this.curDir = response.data.dir;
                     this.overlays = response.data.files;
                     if (this.overlays.length > 0) {
                         this.overlay = this.overlays[0];
