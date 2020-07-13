@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -11,15 +12,20 @@ import (
 	"path/filepath"
 )
 
+const indexHtmlBase64 = "<html>"
+var indexHtml []byte
 var workDir string
 
-func index(w http.ResponseWriter, req *http.Request) {
-	f, err := os.Open("index.html")
+func init() {
+	htmlBytes, err := base64.StdEncoding.DecodeString(indexHtmlBase64)
 	if err != nil {
-		http.Error(w, "Parse index err", http.StatusInternalServerError)
-		return
+		log.Fatalf("Decode base64 index html err. %v\n", err)
 	}
-	io.Copy(w, f)
+	indexHtml = htmlBytes
+}
+
+func index(w http.ResponseWriter, req *http.Request) {
+	w.Write(indexHtml)
 }
 
 func saveFile(w http.ResponseWriter, r *http.Request) {

@@ -175,7 +175,7 @@
   </b-container>
 </script>
 <script>
-    Vue.use(VueCodemirror)
+    Vue.use(VueCodemirror);
     Vue.component('editor-view', {
         template: '#editor-view',
         props: ['overlay'],
@@ -206,30 +206,29 @@
         },
         methods: {
             selectFile(file) {
-                this.selectedFile = file
+                this.selectedFile = file;
                 axios.get(`/files/${this.overlay}/${file}`).then(response => {
-                    this.fileContent = response.data.content
-                    this.changedContent = this.fileContent
-
-                    this.contentChange = false
-                })
+                    this.fileContent = response.data.content;
+                    this.changedContent = this.fileContent;
+                    this.contentChange = false;
+                });
             },
             createFile() {
-                this.$bvModal.show('create-file-modal')
+                this.$bvModal.show('create-file-modal');
             },
             doCreateFile() {
                 return axios.post(`/create?path=${this.overlay}${this.newFileName}`).then(response => {
                     this.listFiles()
-                })
+                });
             },
             deleteFile(file) {
-                this.deletedFile = file
-                this.$bvModal.show('delete-file-modal')
+                this.deletedFile = file;
+                this.$bvModal.show('delete-file-modal');
             },
             doDeleteFile() {
                 return axios.post(`/delete?path=${this.overlay}${this.deletedFile}`).then(response => {
                     this.listFiles()
-                })
+                });
             },
             saveFile() {
                 var config = {
@@ -238,100 +237,98 @@
                     }
                 };
                 axios.post(`/save?path=${this.overlay}${this.selectedFile}`, this.changedContent, config).then(response => {
-                    this.fileContent = this.changedContent
-                    this.contentChange = false
+                    this.fileContent = this.changedContent;
+                    this.contentChange = false;
                     this.preview()
-                })
+                });
             },
             preview() {
                 axios.get(`/preview?overlay=${this.overlay}`).then(response => {
                     this.previewContent = response.data
-                })
+                });
             },
             listFiles() {
                 axios.get(`/files/${this.overlay}`).then(response => {
                     this.files = response.data.files
-                })
+                });
             },
             resetCreateFileModal() {
-                this.newFileName = ''
-                this.newFileNameState = null
+                this.newFileName = '';
+                this.newFileNameState = null;
             },
             handleCreateOk(bvModalEvt) {
                 // Prevent modal from closing
-                bvModalEvt.preventDefault()
-                this.handleCreateFileSubmit()
+                bvModalEvt.preventDefault();
+                this.handleCreateFileSubmit();
             },
             handleDeletionOk(bvModalEvt) {
                 // Prevent modal from closing
-                bvModalEvt.preventDefault()
-                this.handleDeleteFileSubmit()
+                bvModalEvt.preventDefault();
+                this.handleDeleteFileSubmit();
             },
             handleDeleteFileSubmit() {
                 this.doDeleteFile().then(() => {
-                    this.$bvModal.hide('delete-file-modal')
-                })
+                    this.$bvModal.hide('delete-file-modal');
+                });
             },
             checkFormValidity() {
-                let valid = this.$refs.form.checkValidity()
-                this.newFileNameState = valid
+                let valid = this.$refs.form.checkValidity();
+                this.newFileNameState = valid;
                 if (!valid) {
-                    return valid
+                    return valid;
                 }
 
-                let matched = this.newFileName.match(/^[-_a-zA-Z0-9]+\.(yaml|yml|json)$/)
+                let matched = this.newFileName.match(/^[-_a-zA-Z0-9]+\.(yaml|yml|json)$/);
                 if (!matched) {
-                    this.newFileNameState = false
-                    return false
+                    this.newFileNameState = false;
+                    return false;
                 }
 
-                return true
+                return true;
             },
             handleCreateFileSubmit() {
                 // Exit when the form isn't valid
                 if (!this.checkFormValidity()) {
-                    return
+                    return;
                 }
 
                 this.doCreateFile().then(() => {
-                    this.$bvModal.hide('create-file-modal')
-                })
+                    this.$bvModal.hide('create-file-modal');
+                });
             },
             onEditorReady(cm) {
-                this.editorCM = cm
+                this.editorCM = cm;
                 this.editorCM.setOption("extraKeys", {
                     Tab(cm) {
                         cm.replaceSelection("  " , "end");
                     }
-                })
+                });
             },
             onCodeChange(newCode) {
-                this.changedContent = newCode
-                this.contentChange = this.changedContent !== this.fileContent
+                this.changedContent = newCode;
+                this.contentChange = this.changedContent !== this.fileContent;
 
             },
             onPreviewReady(cm) {
-                this.previewCM = cm
+                this.previewCM = cm;
             },
             handleWindowResize() {
-                this.updateEditorSize()
+                this.updateEditorSize();
             },
             updateEditorSize() {
-                let width = this.$refs['editor-card-body'].clientWidth
-                let height = this.$refs['editor-card-body'].clientHeight
-                this.editorCM.setSize(width-2, height)
-                this.previewCM.setSize(width-2, height)
+                let width = this.$refs['editor-card-body'].clientWidth;
+                let height = this.$refs['editor-card-body'].clientHeight;
+                this.editorCM.setSize(width-2, height);
+                this.previewCM.setSize(width-2, height);
             },
         },
-        watch: {
-        },
         mounted() {
-            this.updateEditorSize()
+            this.updateEditorSize();
             window.addEventListener('resize', this.handleWindowResize);
-            this.listFiles()
+            this.listFiles();
         },
         beforeDestroy: function () {
-            window.removeEventListener('resize', this. handleWindowResize)
+            window.removeEventListener('resize', this. handleWindowResize);
         },
     })
     var app = new Vue({
@@ -346,40 +343,40 @@
         },
         methods: {
             selectOverlay(overlay) {
-                this.overlay = overlay
+                this.overlay = overlay;
             },
             createOverlay() {
-                this.isCreateOverlay = true
-                this.overlayModalTitle = 'New Overlay'
-                this.$bvModal.show('edit-overlay-modal')
+                this.isCreateOverlay = true;
+                this.overlayModalTitle = 'New Overlay';
+                this.$bvModal.show('edit-overlay-modal');
             },
             doCreateOverlay() {
                 return axios.post(`/create_overlay?overlay=${this.newOverlayName}`).then(response => {
-                    this.loadOverlays()
-                })
+                    this.loadOverlays();
+                });
             },
             deleteOverlay() {
-                this.$bvModal.show('delete-overlay-modal')
+                this.$bvModal.show('delete-overlay-modal');
             },
             doDeleteOverlay() {
                 return axios.post(`/delete_overlay?overlay=${this.overlay}`).then(response => {
-                    this.loadOverlays()
-                })
+                    this.loadOverlays();
+                });
             },
             renameOverlay() {
-                this.isCreateOverlay = false
-                this.overlayModalTitle = 'Rename Overlay'
-                this.$bvModal.show('edit-overlay-modal')
+                this.isCreateOverlay = false;
+                this.overlayModalTitle = 'Rename Overlay';
+                this.$bvModal.show('edit-overlay-modal');
             },
             doRenameOverlay() {
                 return axios.post(`/rename_overlay?overlay=${this.overlay}&name=${this.newOverlayName}`).then(response => {
-                    this.loadOverlays()
-                })
+                    this.loadOverlays();
+                });
             },
             handleOverlayEditOk(bvModalEvt) {
                 // Prevent modal from closing
-                bvModalEvt.preventDefault()
-                this.handleOverlaySubmit()
+                bvModalEvt.preventDefault();
+                this.handleOverlaySubmit();
 
             },
             handleOverlaySubmit() {
@@ -400,49 +397,49 @@
             },
             handleOverlayDeletionOk(bvModalEvt) {
                 // Prevent modal from closing
-                bvModalEvt.preventDefault()
-                this.handleDeleteOverlaySubmit()
+                bvModalEvt.preventDefault();
+                this.handleDeleteOverlaySubmit();
             },
             handleDeleteOverlaySubmit() {
                 this.doDeleteOverlay().then(() => {
                     this.$bvModal.hide('delete-overlay-modal')
-                })
+                });
             },
             resetEditorOverlayModal() {
                 if (this.isCreateOverlay) {
-                    this.newOverlayName = ''
+                    this.newOverlayName = '';
                 } else {
-                    let len = this.overlay.length
-                    this.newOverlayName = this.overlay.slice(0, len - 1)
+                    let len = this.overlay.length;
+                    this.newOverlayName = this.overlay.slice(0, len - 1);
                 }
-                this.newOverlayNameState = null
+                this.newOverlayNameState = null;
             },
             checkFormValidity() {
-                let valid = this.$refs.form.checkValidity()
-                this.newOverlayNameState = valid
+                let valid = this.$refs.form.checkValidity();
+                this.newOverlayNameState = valid;
                 if (!valid) {
                     return valid
                 }
 
-                let matched = this.newOverlayName.match(/^[-_a-zA-Z0-9]+$/)
+                let matched = this.newOverlayName.match(/^[-_a-zA-Z0-9]+$/);
                 if (!matched) {
-                    this.newOverlayNameState = false
-                    return false
+                    this.newOverlayNameState = false;
+                    return false;
                 }
 
-                return true
+                return true;
             },
             loadOverlays() {
                 axios.get('/files').then(response => {
-                    this.overlays = response.data.files
+                    this.overlays = response.data.files;
                     if (this.overlays.length > 0) {
-                        this.overlay = this.overlays[0]
+                        this.overlay = this.overlays[0];
                     }
-                })
+                });
             }
         },
         mounted() {
-            this.loadOverlays()
+            this.loadOverlays();
         }
     })
 </script>
