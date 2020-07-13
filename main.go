@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -19,12 +20,17 @@ var workDir string
 func init() {
 	htmlBytes, err := base64.StdEncoding.DecodeString(indexHtmlBase64)
 	if err != nil {
-		log.Fatalf("Decode base64 index html err. %v\n", err)
+		debug := os.Getenv("DEBUG")
+		if debug == "" {
+			log.Fatalf("Decode base64 index html err. %v\n", err)
+		}
 	}
 	indexHtml = htmlBytes
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
+	data, _ := ioutil.ReadFile("index.html")
+	indexHtml = data
 	w.Write(indexHtml)
 }
 
