@@ -29,8 +29,10 @@ func init() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	data, _ := ioutil.ReadFile("index.html")
-	indexHtml = data
+	if len(indexHtml) <= 0 {
+		data, _ := ioutil.ReadFile("index.html")
+		indexHtml = data
+	}
 	w.Write(indexHtml)
 }
 
